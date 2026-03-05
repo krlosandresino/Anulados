@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Verificador Anulados</title>
+    <title>✅ Verificador Anulados</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* TU DISEÑO ORIGINAL EXACTO */
@@ -40,9 +40,9 @@
 
 <div id="modalOp" class="overlay">
     <div class="modal">
-        <h3>Identificación de Operario</h3>
+        <h3>Nombre del Operario</h3>
         <input type="text" id="nombreOperario" placeholder="Responsable" style="font-size: 20px;">
-        <button class="btn" onclick="iniciarApp()">Entrar a Pitar</button>
+        <button class="btn" onclick="iniciarApp()">Registrarse</button>
     </div>
 </div>
 
@@ -58,7 +58,7 @@
 
 <div class="container">
     <div id="statusDot"></div>
-    <h2>Control de pedidos/reclamos</h2>
+    <h2>🛃 Control de pedidos/reclamos</h2>
 
     <div class="config-section">
         <strong>1. Cargar archivo excel</strong><br>
@@ -120,7 +120,7 @@
         opNombre = document.getElementById('nombreOperario').value.trim();
         if(opNombre === "") return alert("Ingrese su nombre");
         document.getElementById('modalOp').style.display = 'none';
-        document.getElementById('infoOp').innerText = "Auditor: " + opNombre;
+        document.getElementById('infoOp').innerText = "Responsable: " + opNombre;
         input.disabled = false;
         input.focus();
     }
