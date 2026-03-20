@@ -75,7 +75,7 @@
 
         <input type="number" id="quantityInput" 
                placeholder="CANTIDAD" 
-               min="1" value="1" disabled>
+               min="1" disabled>
         
         <div class="stats">
             <div class="stat-box goal">Sistema: <span id="metaCant">0</span></div>
@@ -224,12 +224,10 @@
         }
     });
 
-    // Manejo de saltos entre campos
     input.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             if(input.value.trim() !== "") {
                 qInput.focus();
-                qInput.select();
             }
         }
     });
@@ -242,6 +240,7 @@
 
     function procesarEscaneo() {
         const cod = input.value.trim();
+        // Si está vacío, asume 1
         const cant = parseInt(qInput.value) || 1;
         
         if(!cod) {
@@ -253,7 +252,6 @@
         if(!item) {
             actualizarUI(`❌ Código [${cod}] no existe.`, "danger", 0, 0);
         } else {
-            // Actualizamos localmente para feedback inmediato
             item.a += cant;
             let cl = "info";
             let tx = `Contando... ${cod} (+${cant}) | Ubicación: ${item.p}`;
@@ -266,7 +264,7 @@
         }
         
         input.value = "";
-        qInput.value = "1";
+        qInput.value = ""; // Limpia el campo para el siguiente
         input.focus();
     }
 
