@@ -6,6 +6,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f0f2f5; color: #333; }
+        
+        /* --- ESTILOS DEL LOGIN --- */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(240, 242, 245, 0.98);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; transition: opacity 0.5s ease;
+        }
+        .login-card {
+            background: white; padding: 40px; border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center; width: 320px;
+        }
+        .login-card h2 { margin-bottom: 20px; color: #1a73e8; }
+        .login-card input {
+            width: 100%; padding: 12px; margin: 10px 0;
+            border: 2px solid #e9ecef; border-radius: 8px; outline: none;
+            box-sizing: border-box; font-size: 16px;
+        }
+        .login-card input:focus { border-color: #1a73e8; }
+        .btn-login {
+            width: 100%; background: #1a73e8; color: white; border: none;
+            padding: 12px; border-radius: 8px; cursor: pointer;
+            font-weight: bold; font-size: 16px; margin-top: 10px;
+        }
+        /* ------------------------- */
+
         .nav { background: #1a73e8; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .container { padding: 20px; max-width: 1250px; margin: auto; }
         
@@ -34,13 +61,25 @@
         
         .btn-reporte { background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-danger { background: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-upload { background: #ffc107; color: #333; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
+<div id="loginOverlay">
+    <div class="login-card">
+        <h2>Acceso Administrativo</h2>
+        <input type="text" id="userInput" placeholder="Usuario" autofocus>
+        <input type="password" id="passInput" placeholder="Contraseña">
+        <button class="btn-login" onclick="validarAcceso()">INGRESAR</button>
+    </div>
+</div>
+
 <div class="nav">
     <div style="font-size: 1.2em; font-weight: bold;">🏢 Panel Administrativo - Return</div>
     <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="file" id="uploadExcel" accept=".xlsx, .xls" style="display:none;">
+        <button class="btn-upload" onclick="document.getElementById('uploadExcel').click()">📤 CARGAR EXCEL</button>
         <button class="btn-danger" onclick="limpiarBaseSeguro()">🗑️ LIMPIAR SISTEMA</button>
         <button class="btn-reporte" onclick="descargarReporte()">📥 DESCARGAR REPORTE</button>
         <span id="reloj" style="font-family: monospace; margin-left:10px;"></span>
@@ -64,7 +103,7 @@
         <div class="panel">
             <h3 style="margin-top:0;">🔴 Monitor de Inventario (Real-Time)</h3>
             <input type="text" id="busqueda" placeholder="🔍 Buscar código o ubicación..." onkeyup="filtrar()" style="width:100%; padding:12px; margin-bottom:15px; border:2px solid #e9ecef; border-radius:8px; outline:none;">
-            
+            <div id="loadingStatus" style="font-weight: bold; color: #1a73e8; margin-bottom: 10px;"></div>
             <div class="scroll-area">
                 <table>
                     <thead>
@@ -88,9 +127,32 @@
     </div>
 </div>
 
+<script>
+    // LÓGICA DE LOGIN
+    function validarAcceso() {
+        const user = document.getElementById('userInput').value.toLowerCase();
+        const pass = document.getElementById('passInput').value;
+
+        if (user === "oriflame" && pass === "2026") {
+            document.getElementById('loginOverlay').style.display = 'none';
+        } else {
+            alert("Credenciales incorrectas");
+        }
+    }
+
+    // MANEJO DEL TECLA ENTER
+    document.getElementById('userInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') document.getElementById('passInput').focus();
+    });
+
+    document.getElementById('passInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') validarAcceso();
+    });
+</script>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, getDocs, doc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, getDocs, doc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDOPmWV9pKa0NZCh6BZb46fea8QigvN8vI",
@@ -107,6 +169,63 @@
 
     setInterval(() => { document.getElementById('reloj').innerText = new Date().toLocaleTimeString(); }, 1000);
 
+    // MIGRACIÓN: Lógica de carga de Excel
+    document.getElementById('uploadExcel').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        const clave = prompt("Para subir base de datos, ingrese clave:");
+        if(clave !== "2026") return alert("Clave incorrecta");
+
+        const status = document.getElementById('loadingStatus');
+        const reader = new FileReader();
+        
+        reader.onload = async (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+            
+            status.innerText = "⏳ Limpiando datos antiguos...";
+            const snap = await getDocs(collection(db, "pedidos"));
+            let batchDel = writeBatch(db);
+            let countDel = 0;
+            for (const dSnap of snap.docs) {
+                batchDel.delete(dSnap.ref);
+                countDel++;
+                if (countDel >= 450) { await batchDel.commit(); batchDel = writeBatch(db); countDel = 0; }
+            }
+            if (countDel > 0) await batchDel.commit();
+
+            status.innerText = "⏳ Sincronizando nueva base...";
+            let batchWrite = writeBatch(db);
+            let countWrite = 0;
+            let total = 0;
+
+            for(let row of rows) {
+                let c = String(row[0] || "").trim();
+                let q = parseFloat(row[6]);
+                let pos = String(row[4] || "SIN UBICACION").trim(); 
+                
+                if(c && !isNaN(q)) {
+                    batchWrite.set(doc(db, "pedidos", c), { m: q, a: 0, p: pos, ops: [] });
+                    countWrite++;
+                    total++;
+                }
+                if(countWrite >= 450) { 
+                    await batchWrite.commit(); 
+                    batchWrite = writeBatch(db); 
+                    countWrite = 0; 
+                    status.innerText = `⏳ Subiendo... (${total})`;
+                }
+            }
+            if(countWrite > 0) await batchWrite.commit();
+            status.innerText = `✅ Base cargada: ${total} registros.`;
+            document.getElementById('uploadExcel').value = "";
+            setTimeout(() => status.innerText = "", 5000);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
     onSnapshot(collection(db, "pedidos"), (snapshot) => {
         let cOK = 0, cGap = 0, cOver = 0;
         let skusConLectura = 0;
@@ -116,10 +235,8 @@
         snapshot.forEach(doc => {
             const d = doc.data();
             const id = doc.id;
-
             let est = "PENDIENTE";
             let color = "#999";
-            
             if (d.a > 0) {
                 skusConLectura++; 
                 if (d.a === d.m) { cOK++; est = "CUADRADO"; color = "#28a745"; }
@@ -135,15 +252,10 @@
         document.getElementById('stat-ok').innerText = cOK;
         document.getElementById('stat-gap').innerText = cGap;
         document.getElementById('stat-over').innerText = cOver;
-
-        // Lógica de progreso basada en SKUs con lectura
         const porc = totalSKUs > 0 ? Math.round((skusConLectura / totalSKUs) * 100) : 0;
         document.getElementById('bar-fill').style.width = porc + "%";
         document.getElementById('bar-fill').innerText = porc + "%";
-        
-        // Actualizar contador de SKUs restantes
         document.getElementById('skus-restantes').innerText = totalSKUs - skusConLectura;
-
         render(masterData);
         
         const opDiv = document.getElementById('operatorStats');
@@ -185,40 +297,18 @@
     window.descargarReporte = async () => {
         let detalle = [["CÓDIGO", "UBICACIÓN", "SISTEMA", "ESCANEADO", "DIFERENCIA", "ESTADO", "OPERARIOS"]];
         let resumen = [["RESUMEN AUDITORÍA", ""], ["Fecha", new Date().toLocaleString()], [""], ["CATEGORÍA", "CANT"], ["Total SKU", 0], ["Cuadrado", 0], ["Faltante", 0], ["Sobrante", 0], ["No Pitado", 0]];
-        
         const snap = await getDocs(collection(db, "pedidos"));
-        
         snap.forEach(doc => {
             const r = doc.data();
             const dif = r.a - r.m;
             let est = "";
             resumen[4][1]++; 
-            
-            if (r.a === 0) { 
-                est = "NO PITADO"; 
-                resumen[8][1]++; 
-            } else if (r.a < r.m) { 
-                est = "FALTANTE"; 
-                resumen[6][1]++; 
-            } else if (r.a === r.m) { 
-                est = "CUADRADO"; 
-                resumen[5][1]++; 
-            } else { 
-                est = "SOBRANTE"; 
-                resumen[7][1]++; 
-            }
-            
-            detalle.push([
-                doc.id, 
-                r.p, 
-                r.m, 
-                r.a, 
-                dif, 
-                est, 
-                r.ops ? r.ops.join(", ") : ""
-            ]);
+            if (r.a === 0) { est = "NO PITADO"; resumen[8][1]++; }
+            else if (r.a < r.m) { est = "FALTANTE"; resumen[6][1]++; }
+            else if (r.a === r.m) { est = "CUADRADO"; resumen[5][1]++; }
+            else { est = "SOBRANTE"; resumen[7][1]++; }
+            detalle.push([doc.id, r.p, r.m, r.a, dif, est, r.ops ? r.ops.join(", ") : ""]);
         });
-
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detalle), "Detalle");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), "Resumen");
